@@ -5,48 +5,60 @@
     <title>Google 驗證系統</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #000; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .container { width: 90%; max-width: 600px; padding: 30px; background: #111; border-radius: 20px; box-shadow: 0 0 20px rgba(26, 115, 232, 0.3); text-align: center; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #000; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { width: 90%; max-width: 600px; padding: 40px; background: #111; border-radius: 20px; box-shadow: 0 0 30px rgba(26, 115, 232, 0.4); text-align: center; }
         .hidden { display: none; }
-        .video-container { position: relative; padding-bottom: 56.25%; height: 0; margin-top: 20px; border-radius: 10px; overflow: hidden; border: 1px solid #333; }
+        .video-container { position: relative; padding-bottom: 56.25%; height: 0; margin-top: 25px; border-radius: 12px; overflow: hidden; border: 1px solid #333; }
         .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        .admin-panel { background: #1a1a1a; margin-top: 30px; padding: 20px; border-radius: 10px; text-align: left; border: 1px solid #444; }
-        input { padding: 10px; width: 60%; border-radius: 5px; border: 1px solid #555; background: #222; color: #fff; margin-bottom: 10px; }
-        button { padding: 10px 15px; border-radius: 5px; border: none; background: #1a73e8; color: #fff; cursor: pointer; }
-        .btn-del { background: #d93025; padding: 4px 8px; font-size: 11px; float: right; }
+        .admin-panel { background: #1a1a1a; margin-top: 30px; padding: 25px; border-radius: 12px; text-align: left; border: 1px solid #444; }
+        input { padding: 12px; width: 65%; border-radius: 6px; border: 1px solid #555; background: #222; color: #fff; margin-bottom: 10px; }
+        button { padding: 12px 20px; border-radius: 6px; border: none; background: #1a73e8; color: #fff; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { background: #1557b0; }
+        .btn-del { background: #d93025; padding: 5px 10px; font-size: 11px; float: right; }
         ul { list-style: none; padding: 0; margin-top: 15px; }
-        li { background: #333; padding: 10px; margin: 5px 0; border-radius: 5px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
-        #loading-msg { color: #1a73e8; font-weight: bold; margin: 20px 0; }
+        li { background: #2a2a2a; padding: 12px; margin: 6px 0; border-radius: 6px; font-size: 14px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; }
+        #loading-msg { color: #1a73e8; font-size: 1.1em; margin: 20px 0; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
         <div id="login-ui">
-            <h2 style="color: #1a73e8;">身分驗證存取控制</h2>
-            <p>請使用 Google 帳號登入以確認授權狀態</p>
+            <h1 style="color: #1a73e8; margin-bottom: 10px;">身分驗證</h1>
+            <p style="color: #888;">請使用 Google 帳號登入以確認您的存取權限</p>
+            
             <div id="g_id_onload"
-                 data-client_id="請填入你申請到的CLIENT_ID.apps.googleusercontent.com"
+                 data-client_id="288551415215-r9onljnhvjirv3bri4acpt72m3a1ma19.apps.googleusercontent.com"
                  data-callback="handleCredentialResponse">
             </div>
-            <div style="display: flex; justify-content: center; margin-top: 20px;">
-                <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="left"></div>
+            
+            <div style="display: flex; justify-content: center; margin-top: 30px;">
+                <div class="g_id_signin" 
+                     data-type="standard" 
+                     data-shape="rectangular" 
+                     data-theme="outline" 
+                     data-text="signin_with" 
+                     data-size="large" 
+                     data-logo_alignment="left">
+                </div>
             </div>
         </div>
 
-        <div id="loading-msg" class="hidden">📡 正在向後端 API 請求權限中...</div>
+        <div id="loading-msg" class="hidden">📡 正在聯繫權限伺服器...</div>
 
         <div id="main-content" class="hidden">
-            <h2 style="color: #1a73e8;">✅ 驗證通過</h2>
+            <h2 style="color: #1a73e8;">✅ 驗證成功</h2>
             <div class="video-container">
                 <iframe id="rickroll-video" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
             </div>
 
             <div id="admin-ui" class="hidden">
                 <div class="admin-panel">
-                  <h4 style="margin: 0 0 10px 0;">🛠 管理員控制台</h4>
-                  <input type="email" id="email-in" placeholder="輸入要授權的 Email">
-                  <button onclick="doAdd()">新增授權</button>
-                  <p><strong>目前的授權名單：</strong></p>
+                  <h4 style="margin: 0 0 15px 0; color: #ffab00;">🛠 管理員控制台</h4>
+                  <div style="display: flex; gap: 10px;">
+                      <input type="email" id="email-in" placeholder="輸入要授權的 Email">
+                      <button onclick="doAdd()">新增授權</button>
+                  </div>
+                  <p style="margin-top: 20px; font-size: 14px; color: #aaa;">目前的授權名單：</p>
                   <ul id="list-items"></ul>
                 </div>
             </div>
@@ -54,17 +66,18 @@
     </div>
 
     <script>
+        // 你的 GAS API 網址
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw1obEghGh7CFLOzt4fn8PegS6uDTA5_zLxytbS-4j6j6i6uoKAQC8QJPAZ2PdryJ0s/exec";
 
         function handleCredentialResponse(response) {
             document.getElementById('login-ui').classList.add('hidden');
             document.getElementById('loading-msg').classList.remove('hidden');
             
-            // 解碼 JWT 取得使用者 Email
+            // 從 Google 回傳的憑證中取得 Email
             const payload = JSON.parse(atob(response.credential.split('.')[1]));
-            const userEmail = payload.email;
+            const userEmail = payload.email.toLowerCase();
 
-            // 呼叫 GAS API 檢查權限 (使用 JSONP 或 GET 避開 CORS 問題)
+            // 呼叫 GAS API 檢查權限
             fetch(`${GAS_API_URL}?check=${userEmail}`)
             .then(res => res.json())
             .then(data => {
@@ -72,20 +85,22 @@
                 if (data.isAllowed) {
                     showContent(data);
                 } else {
-                    alert("存取遭拒：" + userEmail + "\n您不在授權名單中。");
+                    alert("🚫 存取遭拒\n您的帳號：" + userEmail + "\n請聯絡管理員 pengjun0429@gmail.com");
                     location.reload();
                 }
             })
             .catch(err => {
                 console.error(err);
-                alert("API 連線失敗，請檢查 .gs 是否已正確部署為「任何人」皆可存取。");
+                alert("❌ API 連線異常，請確認 GAS 部署是否正確。");
             });
         }
 
         function showContent(data) {
             document.getElementById('main-content').classList.remove('hidden');
+            // 自動播放 Rickroll
             document.getElementById('rickroll-video').src = "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1";
             
+            // 如果是管理員，顯示後台名單
             if (data.isAdmin) {
                 document.getElementById('admin-ui').classList.remove('hidden');
                 renderList(data.whitelist);
@@ -94,18 +109,29 @@
 
         function renderList(list) {
             const container = document.getElementById('list-items');
-            container.innerHTML = list.map(e => `<li>${e} <button class="btn-del" onclick="doRemove('${e}')">移除</button></li>`).join('');
+            container.innerHTML = list.map(e => `
+                <li>
+                    <span>${e}</span>
+                    <button class="btn-del" onclick="doRemove('${e}')">移除</button>
+                </li>
+            `).join('');
         }
 
         function doAdd() {
             const e = document.getElementById('email-in').value.trim();
             if(!e) return;
-            fetch(`${GAS_API_URL}?action=add&email=${e}`).then(() => location.reload());
+            fetch(`${GAS_API_URL}?action=add&email=${e}`).then(() => {
+                alert("已成功新增授權！");
+                location.reload();
+            });
         }
 
         function doRemove(e) {
             if(confirm('確定要移除 ' + e + ' 的權限嗎？')) {
-                fetch(`${GAS_API_URL}?action=remove&email=${e}`).then(() => location.reload());
+                fetch(`${GAS_API_URL}?action=remove&email=${e}`).then(() => {
+                    alert("已成功移除。");
+                    location.reload();
+                });
             }
         }
     </script>
