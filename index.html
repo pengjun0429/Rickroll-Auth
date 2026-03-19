@@ -2,80 +2,145 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>驗證系統 - 偵錯版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google 驗證控制系統</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: #111; padding: 30px; border-radius: 15px; border: 1px solid #333; width: 400px; text-align: center; }
+        body { background: #000; color: #fff; font-family: -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #111; padding: 30px; border-radius: 20px; border: 1px solid #333; width: 90%; max-width: 450px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .hidden { display: none; }
-        #debug-log { color: #555; font-size: 10px; margin-top: 20px; text-align: left; border-top: 1px solid #222; padding-top: 10px; }
+        .video-container { position: relative; padding-bottom: 56.25%; height: 0; margin-top: 20px; border-radius: 12px; overflow: hidden; border: 1px solid #444; }
+        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        button { background: #1a73e8; color: #fff; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        input { padding: 10px; background: #000; border: 1px solid #444; color: #fff; width: 65%; border-radius: 6px; margin-bottom: 10px; }
+        #log-window { margin-top: 20px; padding: 10px; background: #050505; border: 1px dashed #444; color: #0f0; font-family: monospace; font-size: 11px; text-align: left; max-height: 150px; overflow-y: auto; }
+        .admin-box { margin-top: 25px; border-top: 1px solid #333; padding-top: 20px; text-align: left; }
+        li { background: #222; margin: 5px 0; padding: 8px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <div id="login-ui">
-            <h2>身分驗證</h2>
+        <div id="login-section">
+            <h2 style="color: #1a73e8;">身分驗證系統</h2>
+            <p style="color: #888;">請點擊下方按鈕登入 Google</p>
             <div id="g_id_onload"
                  data-client_id="288551415215-r9onljnhvjirv3bri4acpt72m3a1ma19.apps.googleusercontent.com"
                  data-callback="handleSignIn"
                  data-auto_prompt="false">
             </div>
-            <div class="g_id_signin" data-type="standard"></div>
+            <div style="display: flex; justify-content: center; margin-top: 20px;">
+                <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="filled_blue"></div>
+            </div>
         </div>
 
-        <div id="status"></div>
-        <div id="main" class="hidden">
-            <h3>✅ 驗證成功</h3>
-            <iframe id="player" width="100%" height="200" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        <div id="status-msg" style="color: #ffca28; margin-top: 15px;"></div>
+
+        <div id="main-content" class="hidden">
+            <h2 style="color: #1a73e8;">✅ 存取授權成功</h2>
+            <div class="video-container">
+                <iframe id="youtube-player" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+            </div>
+
+            <div id="admin-ui" class="hidden">
+                <div class="admin-box">
+                    <h4>🛠 管理員控制台</h4>
+                    <input type="email" id="new-user-email" placeholder="輸入新的 Email">
+                    <button onclick="addUser()">新增</button>
+                    <ul id="whitelist-display" style="padding: 0; list-style: none;"></ul>
+                </div>
+            </div>
         </div>
-        
-        <div id="debug-log">Log: 等待登入...</div>
+
+        <div id="log-window">System Log: 等待使用者登入...</div>
     </div>
 
     <script>
+        // ⚠️ 請務必填寫最新的 GAS 網址 (末尾為 /exec)
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzKzgpY7boL0XmxrQ6JNPssQAUj1K9A1UH90VCVjhqJ59kFHbXvrzgyfMlKpXcNSPn6/exec";
 
         function log(msg) {
-            document.getElementById('debug-log').innerHTML += "<br>> " + msg;
+            const win = document.getElementById('log-window');
+            win.innerHTML += "<br>> " + msg;
+            win.scrollTop = win.scrollHeight;
             console.log(msg);
         }
 
         function handleSignIn(response) {
-            log("收到 Google 憑證");
-            document.getElementById('login-ui').classList.add('hidden');
-            document.getElementById('status').innerHTML = "📡 正在聯繫伺服器...";
+            try {
+                log("收到憑證，開始安全解析...");
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('status-msg').innerHTML = "⏳ 正在處理身分驗證...";
 
-            const payload = JSON.parse(atob(response.credential.split('.')[1]));
-            const email = payload.email.toLowerCase();
-            log("準備驗證 Email: " + email);
+                // 解析 JWT (補償 Base64 特殊字元與 Padding)
+                const base64Url = response.credential.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
 
-            // 設定 10 秒強制逾時
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const payload = JSON.parse(jsonPayload);
+                const email = payload.email.toLowerCase();
+                log("✅ 解析完成: " + email);
 
-            log("發起 Fetch 請求...");
-            fetch(`${GAS_URL}?check=${email}`, { signal: controller.signal })
-                .then(res => {
-                    clearTimeout(timeoutId);
-                    log("收到伺服器回應 (Status: " + res.status + ")");
-                    return res.json();
-                })
-                .then(data => {
-                    log("JSON 解析成功: " + JSON.stringify(data));
-                    if (data.isAllowed) {
-                        document.getElementById('status').innerHTML = "";
-                        document.getElementById('main').classList.remove('hidden');
-                        document.getElementById('player').src = "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1";
-                    } else {
-                        log("存取遭拒");
-                        alert("未獲授權");
-                        location.reload();
-                    }
-                })
-                .catch(err => {
-                    log("❌ 錯誤: " + err.message);
-                    document.getElementById('status').innerHTML = "連線失敗：" + err.message;
-                });
+                // 發起 Fetch 請求
+                log("發起 Fetch 請求至 GAS...");
+                fetch(`${GAS_URL}?check=${email}`)
+                    .then(res => {
+                        log("伺服器已回應 (HTTP " + res.status + ")");
+                        return res.json();
+                    })
+                    .then(data => {
+                        log("📥 權限解析: " + JSON.stringify(data));
+                        document.getElementById('status-msg').innerHTML = "";
+                        
+                        if (data.isAllowed) {
+                            document.getElementById('main-content').classList.remove('hidden');
+                            document.getElementById('youtube-player').src = "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1";
+                            log("🎉 驗證通過，播放內容");
+                            
+                            if (data.isAdmin) {
+                                document.getElementById('admin-ui').classList.remove('hidden');
+                                renderWhitelist(data.whitelist);
+                            }
+                        } else {
+                            log("❌ 存取遭拒");
+                            alert("抱歉，您的 Email 不在允許名單中。");
+                            location.reload();
+                        }
+                    })
+                    .catch(err => {
+                        log("❌ 連線出錯: " + err.message);
+                        document.getElementById('status-msg').innerHTML = "連線失敗，請檢查網路或 API 部署。";
+                    });
+
+            } catch (e) {
+                log("💥 關鍵錯誤: " + e.message);
+                document.getElementById('status-msg').innerHTML = "解析錯誤，請重新載入頁面。";
+            }
+        }
+
+        function renderWhitelist(list) {
+            const container = document.getElementById('whitelist-display');
+            container.innerHTML = list.map(user => `
+                <li>
+                    <span>${user}</span>
+                    <button onclick="deleteUser('${user}')" style="background:#d93025; padding:3px 8px; font-size:11px;">移除</button>
+                </li>
+            `).join('');
+        }
+
+        function addUser() {
+            const email = document.getElementById('new-user-email').value.trim();
+            if(!email) return;
+            log("正在新增用戶: " + email);
+            fetch(`${GAS_URL}?action=add&email=${email}`).then(() => location.reload());
+        }
+
+        function deleteUser(email) {
+            if(confirm('確定移除 ' + email + ' ?')) {
+                log("正在移除用戶: " + email);
+                fetch(`${GAS_URL}?action=remove&email=${email}`).then(() => location.reload());
+            }
         }
     </script>
 </body>
