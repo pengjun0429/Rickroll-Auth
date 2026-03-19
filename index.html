@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>驗證控制系統</title>
+    <title>Google Auth System</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
@@ -10,7 +10,7 @@
         .hidden { display: none; }
         .video-box { position: relative; padding-bottom: 56.25%; height: 0; margin-top: 20px; border-radius: 10px; overflow: hidden; border: 1px solid #444; }
         .video-box iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        button { background: #1a73e8; color: #fff; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        button { background: #1a73e8; color: #fff; border: none; padding: 10px; border-radius: 5px; cursor: pointer; }
         .admin-area { text-align: left; margin-top: 20px; border-top: 1px solid #333; padding-top: 20px; }
         li { background: #222; margin: 5px 0; padding: 8px; border-radius: 5px; display: flex; justify-content: space-between; font-size: 13px; }
     </style>
@@ -18,7 +18,7 @@
 <body>
     <div class="card">
         <div id="login-ui">
-            <h2 style="color: #1a73e8;">身分驗證</h2>
+            <h2 style="color: #1a73e8;">身分驗證系統</h2>
             <div id="g_id_onload"
                  data-client_id="288551415215-r9onljnhvjirv3bri4acpt72m3a1ma19.apps.googleusercontent.com"
                  data-callback="handleSignIn">
@@ -30,62 +30,87 @@
 
         <div id="loader" class="hidden">📡 正在聯繫 API 伺服器...</div>
 
-        <div id="main" class="hidden">
+        <div id="main-content" class="hidden">
             <h2 style="color: #1a73e8;">✅ 驗證成功</h2>
             <div class="video-box">
-                <iframe id="player" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                <iframe id="video-player" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
             </div>
 
-            <div id="admin-ui" class="hidden" class="admin-area">
+            <div id="admin-ui" class="hidden">
                 <div class="admin-area">
-                    <h4>🛠 管理員後台</h4>
-                    <input type="email" id="new-mail" placeholder="Email">
-                    <button onclick="add()">新增</button>
-                    <ul id="list"></ul>
+                    <hr>
+                    <h4>🛠 管理員控制台</h4>
+                    <input type="email" id="new-email" placeholder="輸入 Email" style="padding:5px; width:60%;">
+                    <button onclick="addUser()">新增</button>
+                    <ul id="list-items"></ul>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        // 指向你測試成功的 GAS 網址
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxozJIbEfynZJw2eUx7tGS6ErZYmmzUu7SZmlK23NL0OMsWp9_M0QlbNn343Lpc-8nQ/exec";
 
         function handleSignIn(response) {
+            // 切換 UI 狀態
             document.getElementById('login-ui').classList.add('hidden');
             document.getElementById('loader').classList.remove('hidden');
 
+            // 解析 Google 憑證取得 Email
             const payload = JSON.parse(atob(response.credential.split('.')[1]));
             const email = payload.email.toLowerCase();
 
-            // 直接呼叫 API 檢查
+            console.log("正在驗證 Email:", email);
+
+            // 呼叫 API 並帶入 check 參數
             fetch(`${GAS_URL}?check=${email}`)
                 .then(res => res.json())
                 .then(data => {
+                    console.log("收到 API 回應:", data);
                     document.getElementById('loader').classList.add('hidden');
+
                     if (data.isAllowed) {
-                        document.getElementById('main').classList.remove('hidden');
-                        document.getElementById('player').src = "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1";
+                        // 1. 顯示主內容與影片
+                        document.getElementById('main-content').classList.remove('hidden');
+                        document.getElementById('video-player').src = "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1";
+                        
+                        // 2. 如果是管理員，渲染名單
                         if (data.isAdmin) {
                             document.getElementById('admin-ui').classList.remove('hidden');
-                            document.getElementById('list').innerHTML = data.whitelist.map(e => 
-                                `<li>${e} <button onclick="del('${e}')" style="background:#d93025; padding:3px 6px;">移除</button></li>`
-                            ).join('');
+                            renderList(data.whitelist);
                         }
                     } else {
-                        alert("存取遭拒：" + email);
+                        alert("🚫 存取遭拒：" + email);
                         location.reload();
                     }
                 })
-                .catch(err => alert("連線失敗，請檢查 GAS 部署是否設為「任何人」"));
+                .catch(err => {
+                    console.error("Fetch 錯誤:", err);
+                    alert("連線失敗！請按 F12 檢查 Console 錯誤訊息。");
+                });
         }
 
-        function add() {
-            const e = document.getElementById('new-mail').value;
-            fetch(`${GAS_URL}?action=add&email=${e}`).then(() => location.reload());
+        function renderList(list) {
+            const container = document.getElementById('list-items');
+            container.innerHTML = list.map(e => `
+                <li>
+                    <span>${e}</span>
+                    <button onclick="deleteUser('${e}')" style="background:#d93025; padding:2px 5px; font-size:10px;">移除</button>
+                </li>
+            `).join('');
         }
 
-        function del(e) {
-            if(confirm('移除 ' + e + ' ?')) fetch(`${GAS_URL}?action=remove&email=${e}`).then(() => location.reload());
+        function addUser() {
+            const email = document.getElementById('new-email').value.trim();
+            if(!email) return;
+            fetch(`${GAS_URL}?action=add&email=${email}`).then(() => location.reload());
+        }
+
+        function deleteUser(email) {
+            if(confirm('確定移除 ' + email + ' ?')) {
+                fetch(`${GAS_URL}?action=remove&email=${email}`).then(() => location.reload());
+            }
         }
     </script>
 </body>
